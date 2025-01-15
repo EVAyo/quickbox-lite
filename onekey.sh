@@ -4,17 +4,12 @@
 #
 # GitHub:   https://github.com/amefs/quickbox-lite
 # Author:   Amefs
-# Current version:  v1.5.1
+# Current version:  v1.5.6
 # URL:
 # Original Repo:    https://github.com/QuickBox/QB
 # Credits to:       QuickBox.io
 #
-#   Licensed under GNU General Public License v3.0 GPL-3 (in short)
-#
-#   You may copy, distribute and modify the software as long as you track
-#   changes/dates in source files. Any modifications to our software
-#   including (via compiler) GPL-licensed code must also be made available
-#   under the GPL along with build & install instructions.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 #################################################################################
 if [[ $1 == "--dev" ]]; then
@@ -63,7 +58,7 @@ function _error() {
 
 function _checkroot() {
 	if [[ $EUID != 0 ]]; then
-        _error "Do not have root previlage, Please run \"sudo su -\" and try again!"
+        _error "You do not have root privileges, please run \"sudo su -\" and try again!"
 		exit 1
 	fi
 }

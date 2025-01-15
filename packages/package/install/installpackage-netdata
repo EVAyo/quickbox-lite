@@ -4,16 +4,11 @@
 #
 # GitHub:   https://github.com/amefs/quickbox-lite
 # Maintainer:   Amefs
-# Current version:  v1.5.1
+# Current version:  v1.5.11
 # Author:           Mischief
 # Credits to:       QuickBox.io
 #
-#   Licensed under GNU General Public License v3.0 GPL-3 (in short)
-#
-#   You may copy, distribute and modify the software as long as you track
-#   changes/dates in source files. Any modifications to our software
-#   including (via compiler) GPL-licensed code must also be made available
-#   under the GPL along with build & install instructions.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 #################################################################################
 ################################################################################
@@ -71,7 +66,7 @@ function _error() {
 APP_TITLE="Netdata"
 APP_NAME="netdata"
 APP_SERVICE="netdata"
-APP_BASEDEPS="autoconf autoconf-archive autogen automake cmake gcc libjson-c-dev libjudy-dev liblz4-dev libmnl-dev libssl-dev libuv1-dev make pkg-config python3-pymongo uuid-dev zlib1g-dev git"
+APP_BASEDEPS="zlib1g-dev uuid-dev libuv1-dev liblz4-dev libssl-dev libelf-dev libmnl-dev libprotobuf-dev protobuf-compiler gcc g++ make git autoconf autoconf-archive autogen automake pkg-config curl python3 cmake"
 
 APP_LOCK=.$APP_NAME.lock
 OUTTO=/srv/dashboard/db/output.log
@@ -163,17 +158,7 @@ function _installSystemUpdates() {
 
 function _installDepends() {
 	_info "Installing ${APP_TITLE} dependencies..."
-	local DEPLIST="${APP_BASEDEPS}"
-	for depend in $DEPLIST; do
-		_info "Installing ${depend}... "
-		_execute "apt-get -y --allow-unauthenticated -f install ${depend}" || { _error "Could not install ${depend}." && dependError=1; }
-	done
-	if [[ $dependError != "1" ]]; then
-		_success "${APP_TITLE} dependencies installed."
-	else
-		_error "${APP_TITLE} dependencies failed to install."
-		exit 1
-	fi
+	bash <(curl -sSL https://raw.githubusercontent.com/netdata/netdata/master/packaging/installer/install-required-packages.sh) --non-interactive >>"${OUTTO}" 2>&1
 }
 
 function _installApp() {
@@ -182,8 +167,10 @@ function _installApp() {
 	username=$(cat /root/.admin.info | cut -d: -f1)
 	mkdir -p /home/${username}/.config/ >/dev/null 2>&1
 	cd /home/${username}/.config/
-	_execute "git clone ${BRANCH} --depth=100 netdata"
+	_execute "git clone --recurse-submodules ${BRANCH} --depth=100 netdata"
 	cd netdata || { _error "Download Netdata failed..." && exit 1; }
+	latest_release_version=$(curl -s https://api.github.com/repos/netdata/netdata/releases/latest | jq -r ".tag_name")
+	_execute "git checkout $latest_release_version"
 	./netdata-installer.sh --disable-telemetry --dont-start-it --dont-wait >>"${OUTTO}" 2>&1
 	sleep 3
 	_success "${APP_TITLE} Built."

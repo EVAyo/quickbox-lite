@@ -4,17 +4,12 @@
 #
 # GitHub:   https://github.com/amefs/quickbox-lite
 # Author:   Amefs
-# Current version:  v1.5.1
+# Current version:  v1.5.11
 # URL:
 # Original Repo:    https://github.com/QuickBox/QB
 # Credits to:       QuickBox.io
 #
-#   Licensed under GNU General Public License v3.0 GPL-3 (in short)
-#
-#   You may copy, distribute and modify the software as long as you track
-#   changes/dates in source files. Any modifications to our software
-#   including (via compiler) GPL-licensed code must also be made available
-#   under the GPL along with build & install instructions.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # shellcheck disable=SC2046,SC1090,SC2181,SC2059
 #################################################################################
@@ -109,9 +104,11 @@ function _init() {
 		DEBIAN_FRONTEND=noninteractive apt-get -qq -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" update >/dev/null 2>&1
 		echo -e "XXX\n10\nPreparing scripts... \nXXX"
 		if [[ $DISTRO == Ubuntu && $CODENAME =~ ("bionic"|"focal") ]]; then
-			apt-get -y install git curl wget dos2unix python apt-transport-https software-properties-common dnsutils unzip >/dev/null 2>&1
+			apt-get -y install git curl wget dos2unix python apt-transport-https software-properties-common dnsutils unzip jq >/dev/null 2>&1
+		elif [[ $DISTRO == Ubuntu && $CODENAME =~ ("jammy"|"noble") ]]; then
+			apt-get -y install git curl wget dos2unix python3 apt-transport-https software-properties-common dnsutils unzip jq >/dev/null 2>&1
 		elif [[ $DISTRO == Debian ]]; then
-			apt-get -y install git curl wget dos2unix python apt-transport-https software-properties-common gnupg2 ca-certificates dnsutils unzip >/dev/null 2>&1
+			apt-get -y install git curl wget dos2unix python3 apt-transport-https software-properties-common gnupg2 ca-certificates dnsutils unzip jq >/dev/null 2>&1
 		fi
 		echo -e "XXX\n20\nPreparing scripts... \nXXX"
 		dos2unix $(find ${local_prefix} -type f) >/dev/null 2>&1
@@ -202,7 +199,7 @@ function _checkdistro() {
 		whiptail --title "$ERROR_TITLE_OS" --msgbox "${ERROR_TEXT_DESTRO_1}${DISTRO}${ERROR_TEXT_DESTRO_2}" --ok-button "$BUTTON_OK" 8 72
 		_defaultcolor
 		exit 1
-	elif [[ ! "$CODENAME" =~ ("bionic"|"buster"|"bullseye"|"focal") ]]; then
+	elif [[ ! "$CODENAME" =~ ("bullseye"|"focal"|"jammy"|"bookworm"|"noble") ]]; then
 		_errorcolor
 		whiptail --title "$ERROR_TITLE_OS" --msgbox "${ERROR_TEXT_CODENAME_1}${DISTRO}${ERROR_TEXT_CODENAME_2}" --ok-button "$BUTTON_OK" 8 72
 		_defaultcolor
@@ -339,7 +336,7 @@ function _askchport() {
 
 function _changeport() {
 	if [[ -e /etc/ssh/sshd_config ]]; then
-		sed -i "s/#*Port 22/Port $chport/g" /etc/ssh/sshd_config
+		sed -i "s/#*Port\s[0-9]*/Port $chport/g" /etc/ssh/sshd_config
 		service ssh restart >>"${OUTTO}" 2>&1
 	fi
 }
@@ -683,11 +680,20 @@ EOF
 function _chsource() {
 	if [[ $mirror == "" ]]; then mirror="us"; fi
 	if [[ $DISTRO == Debian ]]; then
-		if [[ $mirror == "tuna" ]]; then
-			cp ${local_setup_template}source.list/debian.tuna.template /etc/apt/sources.list
+		if [[ "$CODENAME" =~ ("bullseye"|"bookworm") ]]; then
+			if [[ $mirror == "tuna" ]]; then
+				cp ${local_setup_template}source.list/debian.new.tuna.template /etc/apt/sources.list
+			else
+				cp ${local_setup_template}source.list/debian.new.template /etc/apt/sources.list
+				sed -i "s/COUNTRY/${mirror}/g" /etc/apt/sources.list
+			fi
 		else
-			cp ${local_setup_template}source.list/debian.template /etc/apt/sources.list
-			sed -i "s/COUNTRY/${mirror}/g" /etc/apt/sources.list
+			if [[ $mirror == "tuna" ]]; then
+				cp ${local_setup_template}source.list/debian.tuna.template /etc/apt/sources.list
+			else
+				cp ${local_setup_template}source.list/debian.template /etc/apt/sources.list
+				sed -i "s/COUNTRY/${mirror}/g" /etc/apt/sources.list
+			fi
 		fi
 		sed -i "s/RELEASE/${CODENAME}/g" /etc/apt/sources.list
 	else
@@ -705,12 +711,12 @@ function _addPHP() {
 	if [[ $DISTRO == "Ubuntu" ]]; then
 		# add php7.4
 		apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0x5a16e7281be7a449 >/dev/null 2>&1
-		LC_ALL=en_US.UTF-8 add-apt-repository ppa:ondrej/php -y >/dev/null 2>&1
+		add-apt-repository ppa:ondrej/php -y >/dev/null 2>&1
 	elif [[ $DISTRO == "Debian" ]]; then
 		# add php for debian
-		printf "\n" | wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add - >/dev/null 2>&1
+		wget -q https://packages.sury.org/php/apt.gpg -O /etc/apt/trusted.gpg.d/deb.sury.org-php.gpg 2>&1
 		cat >/etc/apt/sources.list.d/php.list <<DPHP
-deb https://packages.sury.org/php/ $(lsb_release -sc) main
+deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/trusted.gpg.d/deb.sury.org-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main
 DPHP
 	fi
 	DEBIAN_FRONTEND=noninteractive apt-get -yqq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" update >>"${OUTTO}" 2>&1
@@ -743,7 +749,7 @@ DPHP
 
 function _dependency() {
 	_addPHP
-	DEPLIST="sudo at bc build-essential curl wget nginx-extras subversion ssl-cert php7.4-cli php7.4-fpm php7.4 php7.4-dev php7.4-memcached memcached php7.4-curl php7.4-gd php7.4-geoip php7.4-json php7.4-mbstring php7.4-opcache php7.4-xml php7.4-xmlrpc php7.4-zip libfcgi0ldbl mcrypt libmcrypt-dev nano python-dev unzip htop iotop vnstat vnstati automake make openssl net-tools debconf-utils ntp rsync"
+	DEPLIST="sudo at bc build-essential curl wget nginx-extras subversion ssl-cert php7.4-cli php7.4-fpm php7.4 php7.4-dev php7.4-memcached memcached php7.4-curl php7.4-gd php7.4-geoip php7.4-json php7.4-mbstring php7.4-opcache php7.4-xml php7.4-xmlrpc php7.4-zip libfcgi0ldbl mcrypt libmcrypt-dev nano unzip htop iotop vnstat vnstati automake make openssl net-tools debconf-utils ntp rsync screenfetch"
 	for depend in $DEPLIST; do
 		# shellcheck disable=SC2154
 		echo -e "XXX\n12\n$INFO_TEXT_PROGRESS_Extra_2${depend}\nXXX"
@@ -796,7 +802,9 @@ function _insngx() {
 
 	cp ${local_setup_template}nginx/proxy.conf.template /etc/nginx/snippets/proxy.conf
 
-	svn export https://github.com/Naereen/Nginx-Fancyindex-Theme/trunk/Nginx-Fancyindex-Theme-dark /srv/fancyindex >>"${OUTTO}" 2>&1
+	# Download nginx fancyindex theme
+	wget -t3 -T20 -q -O /tmp/fancyindex.zip https://codeload.github.com/Naereen/Nginx-Fancyindex-Theme/zip/refs/heads/master >>"${OUTTO}" 2>&1
+	unzip -o -j /tmp/fancyindex.zip "Nginx-Fancyindex-Theme-master/Nginx-Fancyindex-Theme-dark/*" -d "/srv/fancyindex" >>"${OUTTO}" 2>&1
 	cp ${local_setup_template}nginx/fancyindex.conf.template /etc/nginx/snippets/fancyindex.conf
 	sed -i 's/href="\/[^\/]*/href="\/fancyindex/g' /srv/fancyindex/header.html
 	sed -i 's/src="\/[^\/]*/src="\/fancyindex/g' /srv/fancyindex/footer.html
@@ -808,7 +816,7 @@ function _insngx() {
 	fi
 
 	mkdir -p /var/log/nginx/
-	chown -R www-data.www-data /var/log/nginx/
+	chown -R www-data:www-data /var/log/nginx/
 	systemctl restart nginx
 	systemctl restart php7.4-fpm
 }
@@ -816,7 +824,7 @@ function _insngx() {
 function _insnodejs() {
 	# install Nodejs for background service
 	cd /tmp || exit 1
-	curl -sL https://deb.nodesource.com/setup_14.x -o nodesource_setup.sh
+	curl -sL --retry 3 --retry-max-time 60 https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh
 	bash nodesource_setup.sh >>"${OUTTO}" 2>&1
 	exitstatus=$?
 	counter=0
@@ -840,49 +848,42 @@ function _insnodejs() {
 }
 
 function _webconsole() {
-	# setup webconsole for dashboard
-	PUBLICIP=$(ip addr show | grep 'inet ' | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1 | head -n 1)
-	cat >/etc/profile <<EOF
-echo " Welcome Back !"
-if [[ -f /install/domain.info ]]; then
-	echo "    * Dashboard:  https://\$(cat /install/domain.info)"
-else
-	echo "    * Dashboard:  https://${PUBLICIP}"
-fi
-echo ""
-EOF
-	# install shellinabox and service config
-	apt-get -y install shellinabox >>"${OUTTO}" 2>&1
-	service shellinabox stop >/dev/null 2>&1
-	rm -rf /etc/init.d/shellinabox
+	chmod -x /etc/update-motd.d/*
+	\cp -f ${local_setup_template}motd/01-custom /etc/update-motd.d/01-custom
+	chmod +x /etc/update-motd.d/01-custom
+	# install ttyd and service config
+	ttyd_binary_url=$(curl -s https://api.github.com/repos/tsl0922/ttyd/releases/latest | jq -r ".assets[] | select(.name | contains(\"$(arch)\")) | .browser_download_url") >>"${OUTTO}" 2>&1
+	if wget -qO /usr/local/bin/ttyd "${ttyd_binary_url}"; then
+		echo "ttyd binary download success" >>"${OUTTO}" 2>&1
+		chmod +x /usr/local/bin/ttyd
+	else
+		echo "ttyd binary download failed" >>"${OUTTO}" 2>&1
+	fi
+	service ttyd stop >/dev/null 2>&1
+	rm -f /etc/init.d/ttyd >/dev/null 2>&1
 
 	if [[ ! -f /etc/nginx/apps/"${username}".console.conf ]]; then
 		cat > /etc/nginx/apps/"${username}".console.conf <<WEBC
 location /${username}.console/ {
-    proxy_pass        http://127.0.0.1:4200;
-    #auth_basic "What's the password?";
-    #auth_basic_user_file /etc/htpasswd.d/htpasswd.${username};
+    proxy_pass http://127.0.0.1:4200;
+    rewrite ^/${username}.console(.*) /\$1 break;
+    auth_basic "password Required";
+    auth_basic_user_file /etc/htpasswd;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "upgrade";
 }
 WEBC
 	fi
-	if (grep -q "disable-ssl" /etc/default/shellinabox); then
-		sed -i 's/SHELLINABOX_ARGS="/SHELLINABOX_ARGS="--disable-ssl /g' /etc/default/shellinabox
-	fi
-	if (grep -q "localhost-only" /etc/default/shellinabox); then
-		sed -i 's/SHELLINABOX_ARGS="/SHELLINABOX_ARGS="--localhost-only /g' /etc/default/shellinabox
-	fi
 
-	cp ${local_setup_template}systemd/shellinabox.service.template /etc/systemd/system/shellinabox.service
-	cp ${local_setup_template}webconsole/00_QuickConsole.css.template /etc/shellinabox/options-enabled/00_QuickConsole.css
-	chmod +x /etc/shellinabox/options-enabled/00_QuickConsole.css
-	chmod 777 /etc/shellinabox/options-enabled/00_QuickConsole.css
+	cp ${local_setup_template}systemd/ttyd.service.template /etc/systemd/system/ttyd.service
+	sed -i "s/USERNAME/${username}/g" /etc/systemd/system/ttyd.service
 
-	# enable shellinabox service
+	# enable ttyd service
 	systemctl daemon-reload >/dev/null 2>&1
-	systemctl enable shellinabox.service >/dev/null 2>&1
-	systemctl start shellinabox.service >/dev/null 2>&1
+	systemctl enable ttyd.service >/dev/null 2>&1
+	systemctl start ttyd.service >/dev/null 2>&1
 	# create lock
-	touch /install/.shellinabox.lock
+	touch /install/.ttyd.lock
 }
 
 function _insdashboard() {
@@ -907,22 +908,14 @@ function _insdashboard() {
 	case $uilang in
 	"en")
 		bash /usr/local/bin/quickbox/system/lang/langSelect-lang_en >/dev/null 2>&1
-		touch /install/.lang_en.lock
 		;;
 	"zh")
-		bash /usr/local/bin/quickbox/system/lang/langSelect-lang_zh-cn >/dev/null 2>&1
-		touch /install/.lang_zh.lock
+		bash /usr/local/bin/quickbox/system/lang/langSelect-lang_zh >/dev/null 2>&1
 		;;
 	*)
 		bash /usr/local/bin/quickbox/system/lang/langSelect-lang_en >/dev/null 2>&1
-		touch /install/.lang_en.lock
 		;;
 	esac
-	if [[ $(vnstat -v | grep -Eo "[0-9.]+" | cut -d . -f1) == "1" ]]; then
-		\cp -f /srv/dashboard/widgets/vnstat-raw.php /srv/dashboard/widgets/vnstat.php
-	elif [[ $(vnstat -v | grep -Eo "[0-9.]+" | cut -d . -f1) == "2" ]]; then
-		\cp -f /srv/dashboard/widgets/vnstat-json.php /srv/dashboard/widgets/vnstat.php
-	fi
 	touch /install/.dashboard.lock
 	cd /srv/dashboard/ws || exit 1
 	npm ci --production >>"${OUTTO}" 2>&1
@@ -995,7 +988,7 @@ function _insapps() {
 	sleep 1
 	if [[ "$app_list" =~ "transmission" ]]; then
 		echo -e "XXX\n36\n$INFO_TEXT_INSTALLAPP_2\nXXX"
-		bash ${local_setup_script}transmission.sh "${OUTTO}" "${cdn}" >/dev/null 2>&1
+		bash ${local_setup_script}transmission.sh "${OUTTO}" "${cdn}" "${tr_ver}" >/dev/null 2>&1
 		echo -e "XXX\n43\n$INFO_TEXT_INSTALLAPP_2$INFO_TEXT_DONE\nXXX"
 	else
 		echo -e "XXX\n43\n$INFO_TEXT_INSTALLAPP_2$INFO_TEXT_SKIP\nXXX"
@@ -1231,7 +1224,11 @@ function _startinstall() {
 function _summary() {
 	# Summary list
 	ip=$(ip addr show | grep 'inet ' | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1 | head -n 1)
-	sshport=$(grep -e '#*Port 22' < /etc/ssh/sshd_config | grep -Eo "[0-9]+" )
+	if [[ ${chport} == "default" ]]; then
+		sshport=$(grep -e '#*Port' < /etc/ssh/sshd_config | grep -Eo "[0-9]+" )
+	else
+		sshport=${chport}
+	fi
 	if (whiptail --title "$INFO_TITLE_SUMMARY" --yesno "${INFO_TEXT_SUMMARY_1}\n\n\
 ${INFO_TEXT_SUMMARY_2} $(echo "$OUTTO" | cut -d " " -f 1)\n\
 $(if [[ $domain != "" ]]; then printf "${INFO_TEXT_SUMMARY_20} $domain"; fi)\n\
@@ -1366,11 +1363,12 @@ de_ver=""
 qbit_libt_ver=""
 de_libt_ver=""
 rt_ver=""
+tr_ver=""
 
 #################################################################################
 # OPT GENERATOR
 #################################################################################
-if ! ARGS=$(getopt -a -o d:hrH:p:P:s:t:u: -l domain:,help,ftp-ip:,lang:,reboot,with-log,no-log,with-ftp,no-ftp,with-bbr,no-bbr,with-cf,with-sf,with-osdn,with-github,with-rtorrent,with-rutorrent,with-flood,with-transmission,with-qbittorrent,with-deluge,with-mktorrent,with-ffmpeg,with-filebrowser,with-linuxrar,qbittorrent-version:,deluge-version:,qbit-libt-version:,de-libt-version:,rtorrent-version:,hostname:,port:,username:,password:,source:,theme:,tz:,timezone: -- "$@")
+if ! ARGS=$(getopt -a -o d:hrH:p:P:s:t:u: -l domain:,help,ftp-ip:,lang:,reboot,with-log,no-log,with-ftp,no-ftp,with-bbr,no-bbr,with-cf,with-sf,with-osdn,with-github,with-rtorrent,with-rutorrent,with-flood,with-transmission,with-qbittorrent,with-deluge,with-mktorrent,with-ffmpeg,with-filebrowser,with-linuxrar,qbittorrent-version:,deluge-version:,qbit-libt-version:,de-libt-version:,rtorrent-version:,transmission-version:,hostname:,port:,username:,password:,source:,theme:,tz:,timezone: -- "$@")
 then
 	_usage
     exit 1
@@ -1401,7 +1399,7 @@ while true; do
 		fi
 		shift
 		;;
-	-u | --user)
+	-u | --username)
 		onekey=1
 		username="$2"
 		count=0
@@ -1510,6 +1508,7 @@ while true; do
 	--qbit-libt-version) qbit_libt_ver="--lt $2"; shift;;
 	--de-libt-version) de_libt_ver="--lt $2"; shift;;
 	--rtorrent-version) rt_ver="--version $2"; shift;;
+	--transmission-version) tr_ver="--version $2"; shift;;
 	--)
 		shift
 		break

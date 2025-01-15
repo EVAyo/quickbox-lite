@@ -1,7 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 const path = require("path");
 const nodeExternals = require("webpack-node-externals");
 const WebpackBar = require("webpackbar");
 const TerserPlugin = require("terser-webpack-plugin");
+const ESLintPlugin = require('eslint-webpack-plugin');
 
 module.exports = {
     mode: "production",
@@ -33,12 +36,6 @@ module.exports = {
                 enforce: "pre",
                 use: [
                     "source-map-loader",
-                    {
-                        loader: "eslint-loader",
-                        options: {
-                            typeCheck: true,
-                        },
-                    },
                 ],
             },
             {
@@ -48,10 +45,15 @@ module.exports = {
                 ],
                 exclude: /node_modules/,
             },
+            {
+                test: /.js$/,
+                exclude: /node_modules/,
+            },
         ],
     },
     plugins: [
         new WebpackBar(),
+        new ESLintPlugin(),
     ],
     resolve: {
         extensions: [".tsx", ".ts", ".js"],

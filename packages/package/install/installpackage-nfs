@@ -4,17 +4,12 @@
 #
 # GitHub:   https://github.com/amefs/quickbox-lite
 # Author:   Amefs
-# Current version:  v1.5.1
+# Current version:  v1.5.11
 # URL:
 # Original Repo:    https://github.com/QuickBox/QB
 # Credits to:       QuickBox.io
 #
-#   Licensed under GNU General Public License v3.0 GPL-3 (in short)
-#
-#   You may copy, distribute and modify the software as long as you track
-#   changes/dates in source files. Any modifications to our software
-#   including (via compiler) GPL-licensed code must also be made available
-#   under the GPL along with build & install instructions.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 #################################################################################
 ################################################################################
@@ -77,6 +72,7 @@ APP_BASEDEPS="nfs-kernel-server"
 APP_LOCK=.$APP_NAME.lock
 OUTTO=/srv/dashboard/db/output.log
 username=$(cat /root/.admin.info | cut -d: -f1)
+islan=0
 
 ################################################################################
 # SCRIPT FUNCTIONS
@@ -86,6 +82,7 @@ function _usage() {
 	echo -e "\nUsage: \n$(basename "$0") [-h] [-u username] [-l logfile]"
 	echo -e "\nOptions:\n"
 	echo "-l, --log <logfile>       specific log file"
+	echo "--lan                     allow access to all IP addresses"
 	echo "-u, --user <username>     the user for this installer"
 	# not required by multi-user applications
 	echo ""
@@ -176,9 +173,21 @@ function _configureApp() {
 	cat >>/etc/fstab<<EOF
 /home/${username}    /export/${username}   none    bind  0  0 
 EOF
-cat >>/etc/exports<<EOF
+	if [[ ${islan} == 1 ]]; then
+		cat >>/etc/exports<<EOF
 /export/${username} *(rw,hide,subtree_check,secure)
 EOF
+	else
+		cat >>/etc/exports<<EOF
+/export/${username} 10.8.0.0/24(rw,hide,subtree_check,secure)
+EOF
+		cat >>/etc/hosts.deny<<EOF
+rpcbind mountd nfsd statd lockd rquotad : ALL
+EOF
+		cat >>/etc/hosts.allow<<EOF
+rpcbind mountd nfsd statd lockd rquotad : 10.8.0.0/24, 127.0.0.1
+EOF
+	fi
 	_success "${APP_TITLE} configured."
 }
 
@@ -197,7 +206,7 @@ function _installAppStart() {
 #################################################################################
 # OPT GENERATOR
 #################################################################################
-if ! ARGS=$(getopt -a -o hl:u: -l help,log:,user: -- "$@")
+if ! ARGS=$(getopt -a -o hl:u: -l help,lan,log:,user: -- "$@")
 then
 	_usage
     exit 1
@@ -212,6 +221,9 @@ while true; do
 	-l | --log)
 		OUTTO="$2"
 		shift
+		;;
+	--lan)
+		islan=1
 		;;
 	-u | --user)
 		username="$2"

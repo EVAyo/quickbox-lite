@@ -1,16 +1,16 @@
-import * as fs from "fs";
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import fs from "fs";
 
 import Constant from "../../constant";
 import { WatchedConfig } from "../../watchedConfig";
 
 
-export interface CommandType {
-    [key: string]: {
-        template: string;
-        operations: string[];
-        targets: string[];
-    };
-}
+export type CommandType = Record<string, {
+    template: string;
+    operations: string[];
+    targets: string[];
+} | undefined>;
 
 /**
  * get file list from given directory
@@ -37,6 +37,7 @@ export function buildCommand(payload: string | undefined, config: CommandType | 
         throw new Error(`Invalid config with type '${Object.prototype.toString.call(config)}'`);
     }
     let [command, operation, target] = payload.split(":");
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (command === undefined || operation === undefined || target === undefined) {
         throw new Error(`Invalid payload '${payload}'`);
     }
@@ -54,7 +55,7 @@ export function buildCommand(payload: string | undefined, config: CommandType | 
     // check operation
     if (template.includes(Constant.TEMPLATE_OPERATION)) {
         const configOperation = commandConfig.operations.find(value => value === operation);
-        if (configOperation) {
+        if (configOperation !== undefined) {
             template = template.replace(Constant.TEMPLATE_OPERATION, configOperation);
         } else {
             throw new Error(`Operation '${operation}' not found`);
@@ -68,7 +69,7 @@ export function buildCommand(payload: string | undefined, config: CommandType | 
     // check target
     if (template.includes(Constant.TEMPLATE_TARGET)) {
         const configTarget = commandConfig.targets.find(value => value === target || value === target + `@${Constant.TEMPLATE_USERNAME}`);
-        if (configTarget) {
+        if (configTarget !== undefined) {
             template = template.replace(Constant.TEMPLATE_TARGET, configTarget);
         } else {
             throw new Error(`Target '${target}' not found`);

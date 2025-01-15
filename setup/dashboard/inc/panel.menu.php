@@ -1,23 +1,25 @@
 <?php
-    require_once($_SERVER['DOCUMENT_ROOT'].'/inc/localize.php');
-    require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.lang.php');
-    require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.package.php');
-    require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.theme.php');
-    require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.plugin.php');
-    require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.bw_page.php');
-    require_once($_SERVER['DOCUMENT_ROOT'].'/inc/config.php');
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-    $username = getMaster();
+require_once($_SERVER['DOCUMENT_ROOT'].'/inc/localize.php');
+require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.lang.php');
+require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.package.php');
+require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.theme.php');
+require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.plugin.php');
+require_once($_SERVER['DOCUMENT_ROOT'].'/inc/info.bw_page.php');
+require_once($_SERVER['DOCUMENT_ROOT'].'/inc/config.php');
 
-    assert(isset($languages));
-    assert(isset($packageMap));
-    assert(isset($menuList));
-    assert(isset($downloadList));
-    assert(isset($themes));
-    assert(isset($bw_pages));
-    assert(isset($version));
-    assert(isset($branch));
-    assert(isset($plugins));
+$username = getMaster();
+
+assert(isset($languages));
+assert(isset($packageMap));
+assert(isset($menuList));
+assert(isset($downloadList));
+assert(isset($themes));
+assert(isset($bw_pages));
+assert(isset($version));
+assert(isset($branch));
+assert(isset($plugins));
 ?>
 <body class="body">
 <header>
@@ -33,7 +35,7 @@
           <li>
             <div class="btn-group">
               <button type="button" class="btn btn-logged">
-                <a href="#" class="label label-warning" style="">You are on the QuickBox <?php echo $branch; ?> branch</a>
+                <a href="#" class="label label-warning" style=""><?php echo T('DEV_REPO_TXT', ['branch' => $branch]); ?></a>
               </button>
             </div>
           </li>
@@ -50,6 +52,7 @@
                     <li class="active"><a data-target="#quickplus" data-toggle="tab">QuickBox+</a></li>
                     <!--li><a data-target="#chat" data-toggle="tab">Chat</a></li-->
                     <li><a data-target="#dashadjust" data-toggle="tab">Dashboard</a></li>
+                    <li><a data-target="#configure" data-toggle="tab">Config</a></li>
                   </ul>
 
                   <!-- Tab panes -->
@@ -61,8 +64,8 @@
                             <div class="col-xs-12">
                               <h5>QuickBox :: <span style="color: #fff;text-shadow: 0px 0px 6px #fff;"><?php echo "{$version}"; ?></span></h5>
                               <!-- Changelog and ReadME Link -->
-                              <small><a href="https://github.com/amefs/quickbox-lite/blob/master/README.md" target="_blank">README.md</a></small>
-                              <small><a href="https://github.com/amefs/quickbox-lite/blob/master/CHANGELOG.md#changelog-<?php echo $version; ?>" target="_blank">CHANGELOG</a></small>
+                              <small><a href="https://github.com/amefs/quickbox-lite/blob/master/README.md" target="_blank" rel="noopenner noreferrer">README.md</a></small>
+                              <small><a href="https://github.com/amefs/quickbox-lite/blob/master/CHANGELOG.md#changelog-<?php echo $version; ?>" target="_blank" rel="noopenner noreferrer">CHANGELOG</a></small>
                             </div>
                           </div>
                         </li>
@@ -88,18 +91,43 @@
                                   <small><div data-toggle="modal" data-target="#themeSelect<?php echo $theme['file']; ?>Confirm" style="cursor: pointer;"><img class="lang-flag lazyload" data-src="img/themes/opt_<?php echo $theme['file']; ?>.png" /><?php echo $theme['title']; ?></div></small>
                                 <?php } ?>
                               </div>
+                            </div>
+                          </div>
+                        </li>
+                      </ul>
+
+                    </div><!-- tab-pane -->
+
+                    <div role="tabpanel" class="tab-pane" id="configure">
+                      <ul class="list-group">
+                        <li class="list-group-item">
+                          <div class="row">
+                            <div class="col-xs-12">
                               <div class="col-xs-12 col-md-6" style="padding: 0">
                                 <h5><?php echo T('BW_SELECT'); ?></h5>
                                 <?php foreach ($bw_pages as $page) { ?>
                                   <small><div onclick="localStorage.setItem('bw_tables:page', '<?php echo $page['key']; ?>');location.reload()" style="cursor: pointer;"><?php echo T($page['title']); ?></div></small>
                                 <?php } ?>
                               </div>
+                              <div class="col-xs-12 col-md-6" style="padding: 0">
+                                <h5><?php echo T('PANEL_CONFIG'); ?></h5>
+                                  <small><div onclick="resetPanel();location.reload()" style="cursor: pointer;"><?php echo T('PANEL_RESET'); ?></div></small>
+                                  <script>
+                                    function resetPanel() {
+                                      for (let i = 0; i < localStorage.length; i++) {
+                                        const key = localStorage.key(i);
+                                        if (key.startsWith('lobipanel')) {
+                                          localStorage.removeItem(key);
+                                        }
+                                      }
+                                    }
+                                  </script>
+                              </div>
                             </div>
                           </div>
                         </li>
                       </ul>
-
-                    </div>
+                    </div><!-- tab-pane -->
                   </div>
                 </div>
               </div>
@@ -120,7 +148,7 @@
   </div><!-- header-->
 </header>
 <section>
-  <div class="leftpanel ps-container">
+  <div class="leftpanel ps">
     <div class="leftpanelinner">
       <ul class="nav nav-tabs nav-justified nav-sidebar">
         <li class="tooltips active" data-toggle="tooltip" title="<?php echo T('MAIN_MENU'); ?>" data-placement="bottom"><a data-toggle="tab" data-target="#mainmenu"><i class="tooltips fa fa-ellipsis-h"></i></a></li>
@@ -141,41 +169,41 @@
                 if (!is_package_installed($menu)) {
                     continue;
                 } ?>
-              <li><a class="grayscale" href="<?php echo $menu['url']; ?>" target="_blank"><img data-src="<?php echo $menu['logo']; ?>" class="brand-ico lazyload"> <span><?php echo $menu['name']; ?></span></a></li>
+              <li><a class="grayscale" href="<?php echo $menu['url']; ?>" target="_blank" rel="noopenner noreferrer"><img data-src="<?php echo $menu['logo']; ?>" class="brand-ico lazyload"> <span><?php echo $menu['name']; ?></span></a></li>
             <?php
             } ?>
             <?php
             $require_download_menu = false;
-            foreach ($downloadList as $download) {
-                if (is_package_installed($download)) {
-                    $require_download_menu = true;
-                    break;
-                }
-            }
-            ?>
+foreach ($downloadList as $download) {
+    if (is_package_installed($download)) {
+        $require_download_menu = true;
+        break;
+    }
+}
+?>
             <?php if ($require_download_menu) { ?>
               <li class="nav-parent">
                 <a href=""><i class="fa fa-download"></i> <span><?php echo T('DOWNLOADS'); ?></span></a>
                 <ul class="children">
                 <?php foreach ($downloadList as $download) {
-                if (!is_package_installed($download)) {
-                    continue;
-                } ?>
-                    <li><a href="<?php echo $download['url']; ?>" target="_blank"><?php echo $download['name']; ?></a></li>
+                    if (!is_package_installed($download)) {
+                        continue;
+                    } ?>
+                    <li><a href="<?php echo $download['url']; ?>" target="_blank" rel="noopenner noreferrer"><?php echo $download['name']; ?></a></li>
                 <?php
-            } ?>
+                } ?>
                 </ul>
               </li>
             <?php } ?>
-            <?php if (is_package_running($packageMap['shellinabox'])) { ?>
-            <li><a href="/<?php echo $username; ?>.console" target="_blank"><i class="fa fa-keyboard-o"></i> <span><?php echo T('WEB_CONSOLE'); ?></span></a></li>
+            <?php if (is_package_running($packageMap['ttyd'])) { ?>
+            <li><a href="/<?php echo $username; ?>.console" target="_blank" rel="noopenner noreferrer"><i class="fa fa-keyboard-o"></i> <span><?php echo T('WEB_CONSOLE'); ?></span></a></li>
             <?php } ?>
             <!-- /// BEGIN INSERT CUSTOM MENU /// -->
             <?php
-              if (file_exists($_SERVER['DOCUMENT_ROOT'].'/custom/custom.menu.php')) {
-                  include($_SERVER['DOCUMENT_ROOT'].'/custom/custom.menu.php');
-              }
-            ?>
+                  if (file_exists($_SERVER['DOCUMENT_ROOT'].'/custom/custom.menu.php')) {
+                      include($_SERVER['DOCUMENT_ROOT'].'/custom/custom.menu.php');
+                  }
+?>
             <!-- /// END INSERT CUSTOM MENU /// -->
           </ul>
         </div><!-- tab pane -->
@@ -240,8 +268,8 @@
               <ul class="children">
                 <li class="info-quote"><p class="info-quote"><?php echo T('PMENU_NOTICE_TXT'); ?></p></li>
                 <?php foreach ($plugins as $plugin) {
-                $installed = file_exists("/srv/rutorrent/plugins/{$plugin}/plugin.info");
-                $action    = $installed ? "?removeplugin-{$plugin}=true" : "?installplugin-{$plugin}=true"; ?>
+                    $installed = file_exists("/srv/rutorrent/plugins/{$plugin}/plugin.info");
+                    $action    = $installed ? "?removeplugin-{$plugin}=true" : "?installplugin-{$plugin}=true"; ?>
                 <li>
                   <a href="javascript:void(0)"><?php echo $plugin; ?></a>
                   <div class="toggle-wrapper pull-right" style="margin-right: -10px; margin-top: 5px;">
@@ -254,7 +282,7 @@
                   </div>
                 </li>
                 <?php
-            } ?>
+                } ?>
               </ul>
             </li>
           </ul>

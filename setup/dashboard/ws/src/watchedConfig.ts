@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import { readFileSync, watchFile } from "fs";
 
 export class WatchedConfig<T> {
@@ -22,7 +24,7 @@ export class WatchedConfig<T> {
     }
 
     private loadConfig() {
-        this.config = JSON.parse(readFileSync(this.path).toString(this.encoding));
+        this.config = JSON.parse(readFileSync(this.path).toString(this.encoding)) as T;
     }
 
     private watch() {

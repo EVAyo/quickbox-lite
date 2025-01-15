@@ -1,5 +1,7 @@
 <?php
 
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 if (isset($_SESSION)) {
     session_destroy();
 }
@@ -8,7 +10,7 @@ require_once($_SERVER['DOCUMENT_ROOT'].'/inc/util.php');
 
 session_start_timeout(5);
 
-$version = 'v1.5.1';
+$version = 'v1.5.11';
 $panel   = [
     'name'        => 'QuickBox Lite',
     'author'      => 'Everyone that contributes to the open QuickBox project!',
@@ -22,7 +24,7 @@ $iface_list = ['INETFACE'];
 $branch     = 'master';
 
 if (file_exists('/install/.developer.lock')) {
-    $branch = 'developer';
+    $branch = 'development';
     if (file_exists('/install/.debug.lock')) {
         $branch_info = @file('/install/.debug.lock');
         if ($branch_info !== false) {

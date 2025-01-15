@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /* global bootbox, AnsiUp, socket */
 "use strict";
 
@@ -5,6 +7,7 @@
 (function ($) {
   function showAlert (message) {
     bootbox.alert({
+      // eslint-disable-next-line object-shorthand
       message: message,
       backdrop: true,
       size: "large"
@@ -102,16 +105,16 @@
     if (!target) {
       return;
     }
-    if (!target.dataset.package) {
+    if (target.dataset.package === undefined) {
       do {
         target = target.parentElement;
-      } while (target && target.nodeName === "DIV" && !target.dataset.package);
+      } while (target && (target.nodeName === "DIV") && !target.dataset.package);
     }
     if (!target) {
       return;
     }
-    const operation = event.target.dataset.operation;
-    const pkg = event.target.dataset.package;
+    const operation = target.dataset.operation;
+    const pkg = target.dataset.package;
     exec(`box:${operation}:${pkg}`);
   }
   window.packageInstallHandler = packageHandler("installpackage");
